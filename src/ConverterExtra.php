@@ -214,7 +214,7 @@ class ConverterExtra extends Converter
      */
     protected function handleTag_table()
     {
-        if ($this->parser->isStartTag) {
+         if ($this->parser->isStartTag) {
             // check if upcoming table can be converted
             if ($this->keepHTML) {
                 if (preg_match($this->tableLookaheadHeader, $this->parser->html, $matches)) {
@@ -288,20 +288,31 @@ class ConverterExtra extends Converter
                         $right = ':';
                         break;
                 }
+
                 array_push($separator, $left . str_repeat('-', $this->table['col_widths'][$col]) . $right);
             }
+
+            foreach ($this->table['col_widths'] as $e) {
+                array_push($separator, str_repeat('---', 1));
+            }
             $separator = '|' . implode('|', $separator) . '|';
+
 
             $rows = [];
             // add padding
             array_walk_recursive($this->table['rows'], [&$this, 'alignTdContent']);
             $header = array_shift($this->table['rows']);
-            array_push($rows, '| ' . implode(' | ', $header) . ' |');
-            array_push($rows, $separator);
+
+            $count = 0;
             foreach ($this->table['rows'] as $row) {
                 array_push($rows, '| ' . implode(' | ', $row) . ' |');
+                $count++;
+                if ($count == 1) {
+                    array_push($rows, $separator);
+                }
             }
-            $this->out(implode("\n" . $this->indent, $rows));
+
+            $this->out(implode("\r\n" . $this->indent, $rows));
             $this->table = [];
             $this->setLineBreaks(2);
         }
@@ -384,6 +395,7 @@ class ConverterExtra extends Converter
      */
     protected function handleTag_th()
     {
+
         if (!$this->keepHTML && !isset($this->table['rows'][1]) && !isset($this->table['aligns'][$this->col + 1])) {
             if (isset($this->parser->tagAttributes['align'])) {
                 $this->table['aligns'][$this->col + 1] = $this->parser->tagAttributes['align'];
