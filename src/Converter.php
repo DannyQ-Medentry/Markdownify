@@ -6,7 +6,7 @@ namespace Markdownify;
  * default configuration
  */
 define('MDFY_BODYWIDTH', false);
-define('MDFY_KEEPHTML', true);
+define('MDFY_KEEPHTML', false);
 
 /**
  * HTML to Markdown converter class
