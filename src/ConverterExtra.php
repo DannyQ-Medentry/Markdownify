@@ -293,23 +293,28 @@ class ConverterExtra extends Converter
             }
 
             foreach ($this->table['col_widths'] as $e) {
+
                 array_push($separator, str_repeat('---', 1));
             }
-            $separator = '|' . implode('|', $separator) . '|';
 
+            $separator = '|' . implode('|', $separator) . '|';
 
             $rows = [];
             // add padding
             array_walk_recursive($this->table['rows'], [&$this, 'alignTdContent']);
             $header = array_shift($this->table['rows']);
+            
+            array_push($rows, implode(' | ', $header) . str_repeat(' | ' , (count($this->table['col_widths']) - count($header))));
 
             $count = 0;
             foreach ($this->table['rows'] as $row) {
-                array_push($rows, '| ' . implode(' | ', $row) . ' |');
                 $count++;
                 if ($count == 1) {
+
                     array_push($rows, $separator);
+
                 }
+                array_push($rows, '| ' . implode(' | ', $row) . ' |');
             }
 
             $this->out(implode("\r\n" . $this->indent, $rows));
