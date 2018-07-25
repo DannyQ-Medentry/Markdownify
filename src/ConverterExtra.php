@@ -52,11 +52,15 @@ class ConverterExtra extends Converter
         $this->isMarkdownable['th'] = [
             'align' => 'optional',
         ];
+        $this->isMarkdownable['thead'] =
+         [
+            'align' => 'optional',
+        ];
         $this->isMarkdownable['td'] = [
             'align' => 'optional',
         ];
         $this->isMarkdownable['tr'] = [];
-        array_push($this->ignore, 'thead');
+        //array_push($this->ignore, 'thead');
         array_push($this->ignore, 'tbody');
         array_push($this->ignore, 'tfoot');
         // definition lists
@@ -214,7 +218,7 @@ class ConverterExtra extends Converter
      */
     protected function handleTag_table()
     {
-         if ($this->parser->isStartTag) {
+        if ($this->parser->isStartTag) {
             // check if upcoming table can be converted
             if ($this->keepHTML) {
                 if (preg_match($this->tableLookaheadHeader, $this->parser->html, $matches)) {
@@ -293,26 +297,29 @@ class ConverterExtra extends Converter
             }
 
             foreach ($this->table['col_widths'] as $e) {
-
                 array_push($separator, str_repeat('---', 1));
             }
-
             $separator = '|' . implode('|', $separator) . '|';
 
             $rows = [];
             // add padding
             array_walk_recursive($this->table['rows'], [&$this, 'alignTdContent']);
             $header = array_shift($this->table['rows']);
-            
-            array_push($rows, implode(' | ', $header) . str_repeat(' | ' , (count($this->table['col_widths']) - count($header))));
 
             $count = 0;
             foreach ($this->table['rows'] as $row) {
                 $count++;
+
                 if ($count == 1) {
-
+                    $numberOfColumns = count($header);
+                    $numberOfColumns2 = count($row);
+                    if ($numberOfColumns < $numberOfColumns2) {
+                        for($i = 0; $i < $numberOfColumns2 - $numberOfColumns; $i++) {
+                            $header[] = '';
+                        }
+                    }
+                    array_push($rows, '| ' . implode(' | ', $header) . ' |');
                     array_push($rows, $separator);
-
                 }
                 array_push($rows, '| ' . implode(' | ', $row) . ' |');
             }
@@ -400,7 +407,13 @@ class ConverterExtra extends Converter
      */
     protected function handleTag_th()
     {
+       // $this->handleTag_strong();
+        $this->handleTag_td();
+       // $this->handleTag_strong();
+    }
 
+    protected function handleTag_thead()
+    {
         if (!$this->keepHTML && !isset($this->table['rows'][1]) && !isset($this->table['aligns'][$this->col + 1])) {
             if (isset($this->parser->tagAttributes['align'])) {
                 $this->table['aligns'][$this->col + 1] = $this->parser->tagAttributes['align'];
@@ -408,7 +421,7 @@ class ConverterExtra extends Converter
                 $this->table['aligns'][$this->col + 1] = '';
             }
         }
-        $this->handleTag_td();
+        $this->handleTag_th();
     }
 
     /**

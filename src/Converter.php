@@ -111,6 +111,8 @@ class Converter
         'b' => [],
         'em' => [],
         'i' => [],
+        'sub' => [],
+        'sup' => [],
         'img' => [
             'src' => 'required',
             'alt' => 'optional',
@@ -226,7 +228,6 @@ class Converter
      * @var string
      */
     protected $indent = '';
-
     /**
      * constructor, set options, setup parser
      *
@@ -615,6 +616,15 @@ class Converter
      * @param void
      * @return void
      */
+
+    protected function handleTag_sub()
+    {
+        $this->out('~', true);
+    }
+    protected function handleTag_sup()
+    {
+        $this->out('^', true);
+    }
     protected function handleTag_em()
     {
         $this->out('_', true);
@@ -729,9 +739,10 @@ class Converter
      * @return void
      */
     protected function handleTag_p()
+
     {
         if (!$this->parser->isStartTag) {
-            $this->setLineBreaks(2);
+           $this->setLineBreaks(2);
         }
     }
 
@@ -829,6 +840,7 @@ class Converter
      */
     protected function handleTag_img()
     {
+
         if (!$this->parser->isStartTag) {
             return; // just to be sure this is really an empty tag...
         }
@@ -855,6 +867,41 @@ class Converter
             return;
         } else {
             $this->parser->tagAttributes['src'] = $this->decode($this->parser->tagAttributes['src']);
+            $moodleToken = '7b5a8827a5d80b2273422db8d5182321'; //hardcoded moodleToken for now
+
+            $imgLink = $this->parser->tagAttributes['src'];
+
+            if (strpos($imgLink, '/Resources') === 38) {
+                //$this->parser->tagAttributes['src'] = "https://onlinelearning.medentry.edu.au" . $imgLink;
+                $link = $imgLink;
+                $img = base64_encode(file_get_contents($link));
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+
+                $mimeContentType = finfo_buffer($finfo, base64_decode($img));
+                $this->parser->tagAttributes['src'] = 'data:'.$mimeContentType.';base64,' . $img;
+            }
+
+            if (strpos($imgLink, '/file.php') === 38) {
+                //hardcoded strpos at 10 because /Resources is 10 characters long
+                //replace the slashes from the original img src with underscores
+                //$this->parser->tagAttributes['src'] = "https://onlinelearning.medentry.edu.au/Resources/Legacy_file/" . preg_replace("[/]", "_", substr($imgLink, 10));
+                $link = "https://onlinelearning.medentry.edu.au/Resources/Legacy_file/" . preg_replace("[/]", "_", substr($imgLink, 10));
+                $img = base64_encode(file_get_contents($link));
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mimeContentType = finfo_buffer($finfo, base64_decode($img));
+                $this->parser->tagAttributes['src'] = 'data:'.$mimeContentType.';base64,' . $img;
+            }
+
+            if (strpos($imgLink, '/pluginfile.php') !== false) {
+                //replace /pluginfile.php with /webservice/pluginfile.php
+                //$fixedLink = preg_replace("[/pluginfile.php]", "/webservice/pluginfile.php", $imgLink) . '?token=' . $moodleToken;
+                $img = base64_encode(file_get_contents(preg_replace("[/pluginfile.php]", "/webservice/pluginfile.php", $imgLink) . '?token=' . $moodleToken));
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+
+                $mimeContentType = finfo_buffer($finfo, base64_decode($img));
+                $this->parser->tagAttributes['src'] = 'data:'.$mimeContentType.';base64,' . $img;
+            }
+
         }
 
         $out = '![' . $this->parser->tagAttributes['alt'] . ']';
@@ -980,7 +1027,7 @@ class Converter
         if ($this->parser->isStartTag) {
             $this->stack();
             if (!$this->keepHTML && $this->lastClosedTag == $this->parser->tagName) {
-                $this->out("\n" . $this->indent . '<!-- -->' . "\n" . $this->indent . "\n" . $this->indent);
+                $this->out("\n" . $this->indent . '' . "\n" . $this->indent . "\n" . $this->indent);
             }
         } else {
             $this->unstack();
@@ -1018,14 +1065,22 @@ class Converter
                 $parent['num']++;
                 $this->out(str_repeat(' ', 3 - strlen($parent['num'])) . $parent['num'] . '. ', true);
             }
-        } else {
+        }
+        else if ($this->lastClosedTag == 'li' && $this->parent() == 'ul') {
             if ($this->parser->isStartTag) {
-                $this->out('  * ', true);
+                $this->out('      * ', true);
             }
         }
+        else {
+            if ($this->parser->isStartTag) {
+                $this->out('   * ', true);
+            }
+        }
+
         $this->indent('    ', false);
         if (!$this->parser->isStartTag) {
             $this->setLineBreaks(1);
+            $this->out(' ', true);
         }
     }
 
@@ -1053,7 +1108,6 @@ class Converter
     protected function handleTag_br()
     {
         $this->out("  \n" . $this->indent, true);
-        $this->parser->html = ltrim($this->parser->html);
     }
 
     /**
@@ -1343,6 +1397,7 @@ class Converter
     {
         if ($this->parser->isStartTag) {
             $this->parser->html = ltrim($this->parser->html);
+            $this->parser->html = rtrim($this->parser->html);
         }
     }
 
@@ -1370,7 +1425,7 @@ class Converter
             } else {
                 $str =& $this->output;
             }
-
+            
             // move spaces before the end element to after the element
             if (preg_match('~(\s+)$~', $str, $matches)) {
                 $str = rtrim($str, " \t\0\x0B");
